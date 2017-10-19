@@ -22,7 +22,7 @@ my %file1Hash = %{$file1HashRef};
 my %file2Hash = %{$file2HashRef};
 
 # Find the gene regulation for each gene, find the unique/common gene sets
-foreach my $gene (keys %file1Hash) {
+foreach my $gene (sort keys %file1Hash) {
 #	print "Hash = file1Hash, key = $gene, value = $file1Hash{ $gene }\n";
 	if (!defined $file2Hash{$gene}) {
 		push @uniqueFile1, $gene
@@ -31,14 +31,14 @@ foreach my $gene (keys %file1Hash) {
 		$allGenes{ $gene } = $file1Hash{ $gene };
 	}
 }
-foreach my $gene (keys %file2Hash) {
+foreach my $gene (sort keys %file2Hash) {
 #	print "Hash = file2Hash, key = $gene, value = $file2Hash{ $gene }\n";
 	if (!defined $file1Hash{$gene}) {
 		push @uniqueFile2, $gene;
 	}
 	else {
 		my @tmpArray = split( '\t', $file2Hash{$gene} );
-		$allGenes{$gene} .= $tmpArray[1];
+		$allGenes{$gene} .= "\t".$tmpArray[1];
 	}
 }
 
@@ -48,11 +48,27 @@ print "- means down-regulated gene\n";
 print ". means genes without striking change\n";
 print "X means genes detectable only in one group [$group1Name|$group2Name|$group3Name]\n";
 
-print "[1] Common gene set \n";
+print "\n[1] Common gene set \n";
 foreach my $gene (sort keys %allGenes) {
-	print "$gene $file1 (A vs B: ); $file2 (C vs A: )\n";
+	my @expression = split("\t", $allGenes{$gene});
+	my $group1vs2 = compareExpression($expression[0], $expression[1], $group1Name, $group2Name );
+	my $group3vs1 = compareExpression($expression[2], $expression[0], $group3Name, $group1Name );
+	print "$gene $file1 ($group1Name vs $group2Name: $group1vs2); $file2 ($group3Name vs $group1Name: $group3vs1)\n";
 }
 
+print "\n[2] Gene set unique to $file1\n";
+foreach my $gene (@uniqueFile1) {
+	my @expression = split("\t", $file1Hash{$gene});
+	my $group1vs2 = compareExpression($expression[0], $expression[1], $group1Name, $group2Name );
+	print "$gene ($group1Name vs $group2Name: $group1vs2)\n";
+}
+
+print "\n[2] Gene set unique to $file2\n";
+foreach my $gene (@uniqueFile2) {
+	my @expression = split("\t", $file2Hash{$gene});
+	my $group3vs1 = compareExpression($expression[1], $expression[0], $group3Name, $group1Name );
+	print "$gene ($group3Name vs $group1Name: $group3vs1)\n";
+}
 #====================================================================Subroutines
 # Given a file: find the name for both groups and store all the gene expression 
 # each gene in hash. Return the groupnames and hash.
