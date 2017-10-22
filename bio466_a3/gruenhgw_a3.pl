@@ -92,32 +92,85 @@ foreach my $gene (@geneSet) {
 	my $object2=SeqAnalysis->new(-seq_name=>$gene, 
 								 -sequence=>$SeqHash{$gene},
 								 -desc=>$DescHash{$gene});
-	my %dinucleotides = ();
-	foreach $a ('A', 'T', 'G', 'C') {
-		foreach $b ('A', 'T', 'G', 'C') {
+	my (%dinucleotides, %codons) = ();
+	foreach my $a ('A', 'T', 'G', 'C') {
+		foreach my $b ('A', 'T', 'G', 'C') {
 			$dinucleotides{$a.$b} = 0;
+			foreach my $c ( 'A', 'T', 'G', 'C' ) {
+				$codons{$a.$b.$c} = 0;
+			}
 		}
 	}
-	print "$gene $DescHash{$gene}\n";
+	print ">$gene $DescHash{$gene}\n";
 	$object2->printWithSpacer();
-	my ($a, $t, $g, $c, $n) 		= $object2->nucleotideCounter();
+	my ($A, $T, $G, $C, $N) 		= $object2->nucleotideCounter();
 	my ( $GCcontent, $SeqLength )	= $object2->gcContentSeqLength();
 #	$object2->detectEnzyme();
+
 	my $dinucleotidesRef = $object2->dinucleotideFrequency(\%dinucleotides);
 	%dinucleotides = %{$dinucleotidesRef};
-#	$object2->detectPolyaSignal();
-#	$object2->codonUsage();
 	
-	print "[1] Nucleotide Counts: A=$a, T=$t, G=$g, C=$c, Other=$n\n";
+	my $polyASitesRef = $object2->detectPolyaSignal();
+	my %polyASites = %{$polyASitesRef};
+	
+	my $codonsRef = $object2->codonUsage(\%codons);
+	%codons = %{$codonsRef};
+	
+	my $motifHashRef = $object2->detectMotifs("GAATCC", "GAATGG", "GAACCCC");
+	my %motifHash = %{$motifHashRef};
+		
+	my $tagMotifHashRef = $object2->detectMotifsWithLabels('A1'=>'GAATCC', 'A2'=>'GAATGG', 'A3'=>'GAACCCC');
+	my %tagMotifHash = %{$tagMotifHashRef};
+	
+	print "[1] Nucleotide Counts: A=$A, T=$T, G=$G, C=$C, Other=$N\n";
 	print "[2] GC Content: $GCcontent\n";
 	print "[3] Sequence Length: $SeqLength\n";
-	print "[5] Dinucleotide Frequency (%): \n";
+	print "[5] Dinucleotide Frequency (%): \n\n";
 	my $diNCounter = 1;
 	foreach my $diN (keys %dinucleotides) {
-		printf"[$diN]=$dinucleotides{$diN} ";
+		printf"[$diN]=%.3f ", $dinucleotides{$diN};
 		if ($diNCounter % 4 == 0) 	{	print "\n";	}
 		$diNCounter++;
 	}
+	print "\n[6] Detection of poly(A) signal (AATAAA): \n\n";
+	print "No.\tStart\tEnd\tSignal\n";
+	my $polyCounter = 1;
+	foreach my $site (sort {$a <=> $b} keys %polyASites) {
+		my $endSite = $site + 6;
+		print "$polyCounter\t$site\t$endSite\t$polyASites{$site}\n";
+		$polyCounter++;
+	}
+	print "\n[7] Codon Usage:\n\n";
+	my $codonCounter = 1;
+	foreach my $codon (keys %codons) {
+		printf"[$codon]=%.3f ", $codons{$codon};
+		if ($codonCounter % 4 == 0) 	{	print "\n";	}
+		$codonCounter++;
+	}
+	
+	print "\n[8] Detection of motifs without labels: \n(";
+	my @motifs = sort keys %motifHash;
+	for (my $i = 0; $i <= $#motifs; $i++) {
+		print "\'$motifs[$i]\'"; 
+		if ($i != $#motifs) {	print ", "; 						}
+		else 				{	print ")\n\nMotif\t\tStart\tEnd\n";	}
+	}
+	foreach my $motif (@motifs) {
+		print "$motif\t\t$motifHash{$motif}[0]\t".$motifHash{$motif}[1]."\n";
+	}
+	
+	print "\n[9] Dection of motifs with labels: (";
+	my @tagMotif = sort keys %tagMotifHash;
+	for (my $i = 0; $i <= $#tagMotif; $i++) {
+		my @tmpArray = split('\t', $tagMotif[$i]);
+		print "\'$tmpArray[0]\'=>\'$tmpArray[1]\'"; 
+		if ($i != $#tagMotif) 	{	print ", "; 						}
+		else 					{	print ")\n\nLabel\tMotif\t\tStart\tEnd\n";	}
+	}
+	foreach my $key (@tagMotif) {
+		print "$key\t\t$tagMotifHash{$key}[0]\t$tagMotifHash{$key}[1]\n";
+	}
+	print "\n";
 }
 
 #====================================================================Subroutines
@@ -134,109 +187,3 @@ sub compareExpression {
 	else                                         { $reg = "."; }
 	return $reg;
 }
-#
-#sub printWithSpacer {
-#	my $myseq = shift;
-#	# TODO Delete Liang's Comments
-#	##  Put your core code for Assignment No.1 here, which will print a scale, label and spacer.
-#	##  You can use print statements here to print nucleotides with spacers.
-#	my $nts        = 100;
-#	my $cols       = $nts / 10;
-#	my $lineNumber = 0;
-#
-#	# print the top row: the column numbers
-#	print "    ";
-#	for ( my $col = 1 ; $col <= $cols ; $col++ ) {
-#		for ( my $space = 0 ; $space < 9 ; $space++ ) {
-#			print " ";
-#		}
-#		print $col == 10 ? $col : " $col";
-#	}
-#
-#	# print the 2nd to the top row: the sub-column numbers
-#	print "\nLine";
-#	for ( my $col = 1 ; $col <= $cols ; $col++ ) {
-#		print(" ");
-#		for ( my $subCol = 1 ; $subCol <= 10 ; $subCol++ ) {
-#			print $subCol % 10;
-#		}
-#	}
-#
-#	# Print the sequence properly spaced
-#	for ( my $i = 0 ; $i < length($myseq) ; $i++ ) {
-#
-#		# print the line number, but properly spaced for multiple digits
-#		if ( $i % $nts == 0 ) {
-#			print "\n";
-#			for ( my $space = 0 ; $space < 3 - ( $lineNumber + 1 ) / 10 ; $space++ ) {
-#				print " ";
-#			}
-#			print( ( $lineNumber + 1 ) . " " );
-#			$lineNumber++;
-#		}
-#
-#		# Print the spaces if needed
-#		elsif ( $i % 10 == 0 && $i % $nts != 0 ) {
-#			print " ";
-#		}
-#
-#		# Print the actual nucleotide
-#		print substr( $myseq, $i, 1 );
-#	}
-#	print "\n";
-#}
-#
-#sub nucleotideCounter {
-#	my $myseq = shift;
-#	##  you need to write some codes here to get A/T/G/C and other base counts
-#	##  the print statement for “Nucleotide Counts: A=130 T=145 G=135 C=126 N=0”
-#	##  cannot be in this function. Instead, it must be in your main program.
-#	return (($myseq =~ tr/A//), ($myseq =~ tr/T//), ($myseq =~ tr/G//), ($myseq =~ tr/C//), ($myseq =~ tr/N//));
-#}
-#
-#sub gcContentSeqLength {
-#	my $myseq = shift;
-#	my ( $GCcontent, $SeqLength ) = ( 0, 0 );
-#	## You need to invoke nucleotideCounter()get relevant nucleotide account
-#	## Then, you will calculaate total sequence length and GC content value
-#	my ($a, $t, $g, $c, $n) = nucleotideCounter($myseq);
-#	$SeqLength = $a + $t + $c + $n;
-#	$GCcontent = ($g+$c)/$SeqLength;
-#	return ( $GCcontent, $SeqLength );
-#}
-#
-#sub detectEnzyme {
-#	my $myseq = shift;
-#	##  you only need to detect aforementioned 4 restriction enzymes and their start positions
-#	##  The print statement for the names, positions and sequences of detected enzymes can be here,
-#	##      therefore, you do not need to have return statement inside this subroutine.
-#	##  The item numbers (e.g., No. 1, No. 2, No. 3) have to be a variable. Of course, “No.” need to be
-#	##  hard-coded.  }sub dinucleotideFrequency {    my ($myseq,$dinucleotide_hash_ref)=shift;
-#	##  You need to examine all dinucleotides existing in the given sequence
-#	##  You do not need to consider the reverse complementary sequence
-#	##  In your main program, you need to set up a hash for 16 dinucleotide with 0 as initial value.
-#	##  Then, you need to have print statement in main program to print this hash to get output similar
-#	##  to what is shown as [5] in the previous page.
-#}
-#
-#sub detectPolyaSignal {
-#
-#	# CS and BIO students have different tasks    my $myseq=shift;
-#	##  The print statements for the detected poly(A) signals can be here in this subroutine.
-#	##  Therefore, you should not have a return statement here.
-#	##  For biology students, you can use exact match.
-#	##  For computer science students, both exact and fuzzy matches (i.e., one base difference, but not
-#	##  in first, third and last positions of AATAAA) should be allowed.
-#}
-#
-#sub codonUsage {
-#
-#	# For CS students only
-#	my ( $myseq, $codon_distribution_ref ) = shift;
-#	##  You need to examine all codons existing in the given sequence
-#	##  You also need to consider the reverse complementary sequence
-#	##  The ratio for a particular codon will be its number divided by the total codon
-#	##  In main program, you need to define %codon_distribution, which can be updated here.
-#	##  This function is for computer science students only. The relevant print statements in main
-#	##  program will need to generate the output similar to [6] shown in the previous page
-#}
