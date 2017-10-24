@@ -89,6 +89,8 @@ elsif ( $geneSet == 3 ) { @geneSet = sort keys %Unique2List; }
 
 # Print SeqAnlaysis methods for each gene in the chosen gene set
 foreach my $gene (@geneSet) {
+	# Create the object for the gene and intialize all the dinucleotide and
+	# codon hashes for the methods that will need them.
 	my $object2=SeqAnalysis->new(-seq_name=>$gene, 
 								 -sequence=>$SeqHash{$gene},
 								 -desc=>$DescHash{$gene});
@@ -102,11 +104,12 @@ foreach my $gene (@geneSet) {
 		}
 	}
 	print ">$gene $DescHash{$gene}\n";
+	
+	# Make the method calls on the object and dereference the outputs
 	$object2->printWithSpacer();
 	my ($A, $T, $G, $C, $N) 		= $object2->nucleotideCounter();
 	my ( $GCcontent, $SeqLength )	= $object2->gcContentSeqLength();
-#	$object2->detectEnzyme();
-
+	
 	my $dinucleotidesRef = $object2->dinucleotideFrequency(\%dinucleotides);
 	%dinucleotides = %{$dinucleotidesRef};
 	
@@ -122,9 +125,23 @@ foreach my $gene (@geneSet) {
 	my $tagMotifHashRef = $object2->detectMotifsWithLabels('A1'=>'GAATCC', 'A2'=>'GAATGG', 'A3'=>'GAACCCC');
 	my %tagMotifHash = %{$tagMotifHashRef};
 	
+	# Print the dereferenced outputs of the methods
 	print "[1] Nucleotide Counts: A=$A, T=$T, G=$G, C=$C, Other=$N\n";
 	print "[2] GC Content: $GCcontent\n";
 	print "[3] Sequence Length: $SeqLength\n";
+	
+	print "[4] Restriction Sites:\n";
+	$object2->detectEnzyme();
+#	print "Name\tPos\tSeq\tIUPAC\tALT\n";
+#	foreach my $key (sort keys %enzymes) {
+#		my @tmpArray = split('\t', $enzymes{$key});
+#		if ($key =~ /ACAAGGG/) {
+#			foreach my $pos (sort {$a <=> $b} @tmpArray) {
+#				print "BclI\t$pos\tACAAGGG";
+#			}
+#		}
+#	}
+	
 	print "[5] Dinucleotide Frequency (%): \n\n";
 	my $diNCounter = 1;
 	foreach my $diN (keys %dinucleotides) {
@@ -132,6 +149,7 @@ foreach my $gene (@geneSet) {
 		if ($diNCounter % 4 == 0) 	{	print "\n";	}
 		$diNCounter++;
 	}
+	
 	print "\n[6] Detection of poly(A) signal (AATAAA): \n\n";
 	print "No.\tStart\tEnd\tSignal\n";
 	my $polyCounter = 1;
@@ -140,6 +158,7 @@ foreach my $gene (@geneSet) {
 		print "$polyCounter\t$site\t$endSite\t$polyASites{$site}\n";
 		$polyCounter++;
 	}
+	
 	print "\n[7] Codon Usage:\n\n";
 	my $codonCounter = 1;
 	foreach my $codon (keys %codons) {
