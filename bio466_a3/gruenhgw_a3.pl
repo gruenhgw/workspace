@@ -130,9 +130,9 @@ foreach my $gene (@geneSet) {
 	print "[2] GC Content: $GCcontent\n";
 	print "[3] Sequence Length: $SeqLength\n";
 	
-	print "[4] Restriction Sites:\n";
+	print "[4] Restriction Sites:\n\n";
+	print "Name\tPos\tSeq\tIUPAC\tALT\n";
 	$object2->detectEnzyme();
-#	print "Name\tPos\tSeq\tIUPAC\tALT\n";
 #	foreach my $key (sort keys %enzymes) {
 #		my @tmpArray = split('\t', $enzymes{$key});
 #		if ($key =~ /ACAAGGG/) {

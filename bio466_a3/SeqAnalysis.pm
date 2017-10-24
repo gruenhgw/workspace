@@ -101,17 +101,20 @@ sub detectEnzyme {
 	my $minLength = 7;
 	my $maxLength = 8;
 	for (my $i = 0; $i < length($myseq)-$minLength; $i++) {
-		if (substr($myseq, $i, $minLength) =~ /ACAAGGG/) 		{	print "BclI\t$i\tsubstr($myseq, $i, $minLength)\tACAAGGG\tACAAGGG\n";	}
-		elsif (substr($myseq, $i, $minLength) =~ /TGGCC[CT]/) 	{	print "Cac8I\t$i\tsubstr($myseq, $i, $minLength)\tTGGCCY\tTGGCC[CT]\n";	}
-		
-		#TODO convert these to elsifs pringing is done here
-		if ($i < length($myseq)-$maxLength && 
-			(substr($myseq, $i, $maxLength) =~ /GG[AG]GCA[CT]T/ || 
-			substr($myseq, $i, $maxLength)  =~ /AGG[ACGT]TTTA/)	) {
-			$enzymes{substr($myseq, $i, $maxLength)} .= "\t$i";
+		if (substr($myseq, $i, $minLength) =~ /ACAAGGG/) 		{	
+			print "BclI\t$i\tsubstr($myseq, $i, $minLength)\tACAAGGG\tACAAGGG\n";	
+		}
+		elsif (substr($myseq, $i, $minLength) =~ /TGGCC[CT]/) 	{	
+			print "Cac8I\t$i\t".substr($myseq, $i, $minLength)."\tTGGCCY\tTGGCC[CT]\n";	
+		}
+		elsif ($i < length($myseq)-$maxLength && substr($myseq, $i, $maxLength) =~ /GG[AG]GCA[CT]T/) {	
+			print "BfmI\t$i\t".substr($myseq, $i, $maxLength)."\tGGRGCAYT\tGG[AG]GCA[CT]T\n";	
+		}
+		elsif ($i < length($myseq)-$maxLength && substr($myseq, $i, $maxLength) =~ /AGG[ACGT]TTTA/)  {
+			print "EcoRI\t$i\t".substr($myseq, $i, $maxLength)."\tAGGNTTTA\tAGG[ACGT]TTTA\n";
 		}
 	}
-	
+	print "\n";	
 }
 
 sub dinucleotideFrequency {
