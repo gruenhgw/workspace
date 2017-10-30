@@ -10,10 +10,10 @@ if ( $#ARGV != 6 ) {
 }
 
 # Save the input arguments
-my ($genesFile, $querySeq, $mScore, $MScore, $IScore, $maxErrors, $mode) = @ARGV;
+my ( $genesFile, $querySeq, $mScore, $MScore, $IScore, $maxErrors, $mode ) = @ARGV;
 
-# Save all the genes' sequences in %SeqHash, where the name of the gene is the 
-# key and the value is the sequence. Save all the genes' descriptions in 
+# Save all the genes' sequences in %SeqHash, where the name of the gene is the
+# key and the value is the sequence. Save all the genes' descriptions in
 # %DescHash, where the name of the gene is the key and the value is the description.
 my ( %SeqHash, %DescHash ) = ();
 my $stream = Bio::SeqIO->new( -file => $genesFile, -format => 'fasta' );
@@ -24,37 +24,44 @@ while ( my $seq_objt = $stream->next_seq() ) {
 	( $SeqHash{$seq_name}, $DescHash{$seq_name} ) = ( $seq_base, $seq_desc );
 }
 
+# Print to alignment.txt
+open( FILE, ">alignment.txt" );
+select FILE;
+
 # Align the query sequence against every all the genes' sequences
-foreach my $gene (sort keys %SeqHash) {
+foreach my $gene ( sort keys %SeqHash ) {
 	my $min_map_len = length($querySeq) - $maxErrors;
-	my $AlignObject=Align->new(-seq1=>$querySeq, 			# query sequence
-	                           -seq2=>$SeqHash{$gene},	 	# target sequence
-	                           -match=>$mScore,             # match score                       
-	                           -mismatch=>$MScore,          # mismatch penalty                              
-	                           -gap=>$IScore,               # gap penalty
-	                           -min_map_len=>$min_map_len,  # the minimum length of a valid result
-	                           -max_error=>$maxErrors,		# maximum errors allowed
-	                           -mode=>$mode 				# mode=all or one
-	                           );
+	my $AlignObject = Align->new( 
+		-seq1		 => $querySeq,			# query sequence
+		-seq2        => $SeqHash{$gene},  	# target sequence
+		-match       => $mScore,          	# match score
+		-mismatch    => $MScore,          	# mismatch penalty
+		-gap         => $IScore,          	# gap penalty
+		-min_map_len => $min_map_len,     	# the minimum length of a valid result
+		-max_error   => $maxErrors,       	# maximum errors allowed
+		-mode        => $mode,            	# mode=all or one
+		# TODO Ask Dr.Liang if it's okay for me to add this parameter:
+		-gene_name	 => $gene				# the name of the gene
+	);
+
 	print ">$gene $DescHash{$gene}\n";
 	$AlignObject->printWithSpacer();
+
 	# TODO Get Alignment RIGHT HERE
 	$AlignObject->getAlignment();
-	
+
 	# Do all the sequence analysis from assignment 3
-#	sequenceAnalysis($gene, \%SeqHash, \%DescHash);
+	#	sequenceAnalysis($gene, \%SeqHash, \%DescHash);
 }
-
-
 
 #====================================================================Subroutines
 sub sequenceAnalysis {
-	my ($gene, $SeqHashRef, $DescHashRef) = @_;
-	my %SeqHash = %{$SeqHashRef};
+	my ( $gene, $SeqHashRef, $DescHashRef ) = @_;
+	my %SeqHash  = %{$SeqHashRef};
 	my %DescHash = %{$DescHashRef};
-	my $object2 = SeqAnalysis->new( -seq_name => $gene,
-									-sequence => $SeqHash{$gene},
-									-desc     => $DescHash{$gene} );
+	my $object2  = SeqAnalysis->new( -seq_name => $gene,
+		-sequence => $SeqHash{$gene},
+		-desc     => $DescHash{$gene} );
 	my ( %dinucleotides, %codons ) = ();
 	foreach my $a ( 'A', 'T', 'G', 'C' ) {
 		foreach my $b ( 'A', 'T', 'G', 'C' ) {
@@ -141,13 +148,13 @@ sub sequenceAnalysis {
 		my @tmpArray = split( '\t', $tagMotifHash{$key} );
 		foreach my $motifStart (@tmpArray) {
 			my @motifTag = split( '\t', $key );
-			my $motif = $motifTag[1];
+			my $motif    = $motifTag[1];
 			my $motifEnd = $motifStart + length($motif);
-				if ( $motifStart == -1 ) {
-					$motifStart = 0;
-					$motifEnd   = 0;
-				}
-				print "$key\t\t$motifStart\t$motifEnd\n";
+			if ( $motifStart == -1 ) {
+				$motifStart = 0;
+				$motifEnd   = 0;
+			}
+			print "$key\t\t$motifStart\t$motifEnd\n";
 		}
 	}
 	print "\n";
