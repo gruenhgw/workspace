@@ -67,6 +67,7 @@ sub printWithSpacer {
 	print "\n\n";
 }
 
+
 sub getAlignment {
 	my $self = shift;
 	$::querySeq = $self->{'-seq1'};
@@ -78,36 +79,36 @@ sub getAlignment {
 	$::match = $self->{'-match'};
 	$::gap = $self->{'-gap'};
 	$::mismatch = $self->{'-mismatch'};
-	$::gene = $self->{'-gene_name'};
 	$::min_map_len = $self->{'-min_map_len'};
 	$::maxErrors = $self->{'-max_error'};
+	$::mode = $self->{'-mode'};
 	
 	_initializeMatrix();	
 	_align(1, 1);
 	
-	
-	my @tmpArray = split(//, $::targetSeq);
-	my @tmpArray2 = split(//, $::querySeq);
-	my $queryCounter = 0;
-	print "\t\t";
-	foreach my $i (@tmpArray) {
-		print "$i\t\t";
-	}
-	print "\n\t";
-	for (my $row = 0; $row <= $::rows; $row++) {
-		for (my $col = 0; $col <= $::cols; $col++) {
-			if ($col == 0 && $row != 0)		 {	
-				print $tmpArray2[$queryCounter]."\t";
-				$queryCounter++;
-			}
-			print "$::score[$row][$col]";
-			
-			if ($row == 0 && $col != 0)	{	print "     ";						}
-			if ($row != 0 && $col != 0) {	print "($::path[$row][$col])\t";	}
-			else 						{	print "\t";							}
-			if ($col == $::cols) 		{	print "\n";							}
-		}	
-	}
+#	# Print the alignment Matrix
+#	my @tmpArray = split(//, $::targetSeq);
+#	my @tmpArray2 = split(//, $::querySeq);
+#	my $queryCounter = 0;
+#	print "\t\t";
+#	foreach my $i (@tmpArray) {
+#		print "$i\t\t";
+#	}
+#	print "\n\t";
+#	for (my $row = 0; $row <= $::rows; $row++) {
+#		for (my $col = 0; $col <= $::cols; $col++) {
+#			if ($col == 0 && $row != 0)		 {	
+#				print $tmpArray2[$queryCounter]."\t";
+#				$queryCounter++;
+#			}
+#			print "$::score[$row][$col]";
+#			
+#			if ($row == 0 && $col != 0)	{	print "     ";						}
+#			if ($row != 0 && $col != 0) {	print "($::path[$row][$col])\t";	}
+#			else 						{	print "\t";							}
+#			if ($col == $::cols) 		{	print "\n";							}
+#		}	
+#	}
 	
 	_printAlignmentResults();
 	print "\n";
@@ -122,6 +123,12 @@ sub _align {
 	if ($row != $::rows+1) {
 		my $isMismatch = 0;
 		my $diagScore = $::score[$row-1][$col-1];
+		my $vertScore = $::score[$row-1][$col] + $::gap;
+		my $horzScore = $::score[$row][$col-1] + $::gap;
+		
+		# If the chars are equal then it is a match and the diagScore is increased
+		# by the match score. If they're not equal the diagScore is increased
+		# by the mismatch score.	`		
 		if (substr($::querySeq, $row-1, 1) eq substr($::targetSeq, $col-1, 1)) {
 			$diagScore += $::match;
 		}
@@ -129,8 +136,6 @@ sub _align {
 			$diagScore += $::mismatch;
 			$isMismatch = 1;
 		}
-		my $vertScore = $::score[$row-1][$col] + $::gap;
-		my $horzScore = $::score[$row][$col-1] + $::gap;
 		
 		# Find which direction gives the maximum score and store it in the 2D
 		# score array. Then store the direction in the 2D path array.
@@ -178,16 +183,12 @@ sub _printAlignmentResults {
 	my $validResults = 0;
 
 	for ( my $i = 0 ; $i <= $#highPositions ; $i++ ) {
-#		print "\n[" . ( $i + 1 ) . "] seq" . ( $i + 1 ) . " vs. $::gene\n\n";
-
 		# Find the CIGAR string and the string that helps visualize the gaps and
 		# mismatches between the sequences. I call it $pairing.
 		my @position = split( '\t', $highPositions[$i] );
 		my ( $row, $col ) = ( $position[0], $position[1] );
-#		print "row = $row, col = $col\n";
 		my ( $cigar, $pairing, $errors ) = ( "", "", 0 );
 		while ( $row != 0 && $col != 0 ) {
-#			print "row = $row, col = $col, path = $::path[$row][$col]\n";
 			if ( $::path[$row][$col] eq "v" ) {
 				$cigar   = "D" . $cigar;
 				$pairing = " " . $pairing;
@@ -213,9 +214,9 @@ sub _printAlignmentResults {
 		}
 
 		# Check to see if the errors in this alignment are greater than allowed
-		# TODO delete errors
-#		$errors =0;
-		if ( $errors <= $::maxErrors ) {
+		# 5 > 4
+		# 
+		if ( $errors <= $::maxErrors && length($cigar) <= length($::querySeq)+$::maxErrors && length($cigar) >= $::min_map_len ) {
 			# Backtrack on the target to get its alignment string
 			( $row, $col ) = ( $position[0], $position[1] );
 			my $targetResult = "";
@@ -247,6 +248,7 @@ sub _printAlignmentResults {
 					else                                { 	( $row--, $col-- ); 	}
 				}
 			}
+			# TODO fix invalid resuls too small or too big as well as give No results found if necessary.
 			
 			$validResults++;			
 			$results{$validResults} = $startEnd."\t".$targetResult."\t".$pairing."\t".$queryResult."\t".$cigar;
@@ -261,9 +263,13 @@ sub _printAlignmentResults {
 	print "[The highest alignment score]: " . $highScore . "\n";
 	print "[The alignments with the highest score]: $validResults\n";
 	
+	if ($validResults == 0) {
+		print "\nNo valid alignment is found for your criteria!\n";
+	}
+	
 	my $printCounter = 0;
 	foreach my $result (sort {$a <=> $b} keys %results) {
-		print "\n[$result] seq$result vs $::gene\n\n";
+		print "\n[$result]\n\n";
 		my @tmpArray = split('\t', $results{$result});
 		print "$tmpArray[0] $tmpArray[2] $tmpArray[1]\n";
 		print " " x (length($tmpArray[0])+1);
@@ -272,6 +278,8 @@ sub _printAlignmentResults {
 		print "$tmpArray[4]\n";
 		print " " x (length($tmpArray[0])+1);
 		print "$tmpArray[5]\n";
+		
+		if ($::mode eq "one") 	{	last;	}
 	}
 	
 }

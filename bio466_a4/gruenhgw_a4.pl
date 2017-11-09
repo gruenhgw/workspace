@@ -40,14 +40,11 @@ foreach my $gene ( sort keys %SeqHash ) {
 		-min_map_len => $min_map_len,     	# the minimum length of a valid result
 		-max_error   => $maxErrors,       	# maximum errors allowed
 		-mode        => $mode,            	# mode=all or one
-		# TODO Ask Dr.Liang if it's okay for me to add this parameter:
-		-gene_name	 => $gene				# the name of the gene
 	);
 
 	print ">$gene $DescHash{$gene}\n";
 	$AlignObject->printWithSpacer();
-
-	# TODO Get Alignment RIGHT HERE
+	
 	$AlignObject->getAlignment();
 
 	# Do all the sequence analysis from assignment 3
